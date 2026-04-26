@@ -11,6 +11,13 @@ type Task = InferSelectModel<typeof tasksTable>;
 export function TaskRowMenu({ task }: { task: Task }) {
   const [addSubOpen, setAddSubOpen] = useState(false);
 
+  // 깊이 제한 (SPEC.md §5 E-3, 최대 1단계): 자식 행은 더 이상 하위 작업을 가질 수 없으므로
+  // "하위 작업 추가" 항목이 유일한 메뉴 항목인 현 시점에선 메뉴 자체를 노출하지 않는다.
+  // 추후 D(삭제) 등 새 항목이 추가되면 이 분기 재검토.
+  if (task.parentId !== null) {
+    return null;
+  }
+
   return (
     <>
       <Menu.Root>

@@ -72,6 +72,20 @@ export async function createTask(input: CreateTaskInput): Promise<CreateTaskResu
   const validation = validateTaskInput(input);
   if (!validation.ok) return validation;
 
+  // 깊이 제한 (SPEC.md §5 E-3): 부모가 이미 자식이면 손자가 되므로 거부.
+  if (input.parentId) {
+    const [parent] = await db
+      .select({ parentId: tasks.parentId })
+      .from(tasks)
+      .where(eq(tasks.id, input.parentId));
+    if (!parent) {
+      return { ok: false, error: '상위 작업을 찾을 수 없습니다.' };
+    }
+    if (parent.parentId !== null) {
+      return { ok: false, error: '하위 작업은 한 단계까지만 만들 수 있습니다.' };
+    }
+  }
+
   const synced = applyAutoSync(input);
 
   const [row] = await db
