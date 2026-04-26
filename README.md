@@ -185,80 +185,76 @@ done
 
 ---
 
-## 로컬 개발 시작하기
+## 로컬 개발 시작하기 (저장소를 막 클론한 사람용)
 
-### 1) 저장소 준비
+이 저장소에는 이미 Next.js 앱·`lib/db/schema.ts`·`drizzle/` 마이그레이션·`supabase/config.toml`이 들어 있습니다. 클론한 사람은 **앱을 새로 만들 필요가 없고**, 아래 순서대로 환경만 맞추면 곧바로 개발 서버가 뜹니다.
+
+> 🟢 **빠르게 가고 싶다면** — 1번까지만 직접 하고 그 뒤는 Claude Code에 맡기세요. `claude` 실행 후 첫 메시지를 보내면 Claude가 `/setup-dev-environment`(도구 점검)와 `/dev-server`(컨테이너 + Next.js 기동)를 순서대로 제안합니다. 아래 2~6단계를 자동화한 흐름입니다.
+>
+> 아래는 **수동으로 직접 따라가고 싶을 때**의 절차입니다.
+
+### 1) 저장소 클론 & 의존성 설치
 
 ```bash
 git clone <이 저장소 URL>
-cd dihisoft-claude-vercel-wbs
-claude              # Claude Code 시작
+cd claude-vercel-wbs
+npm install                     # node_modules는 git에 포함되지 않으므로 반드시 설치
 ```
 
-첫 메시지를 보내면 Claude가 자동으로 환경 점검 → 로컬 서버 기동을 순서대로 제안합니다(세션 초반 1회). 그대로 따르면 아래 2~5단계가 자동으로 해결됩니다. 수동으로 직접 하고 싶다면 계속 읽으세요.
+### 2) 사전 도구 확인
 
-### 2) 환경 점검 (수동)
-
-Claude Code 프롬프트에서:
-
-```
-/setup-dev-environment
-```
-
-모든 항목이 ✅가 되면 다음 단계로.
-
-### 3) Supabase 로컬 Postgres 기동
-
-Supabase CLI는 이 프로젝트에서 **로컬 컨테이너를 띄우는 용도로만** 씁니다.
+Docker Desktop이 **실행 중**이어야 다음 단계가 동작합니다.
 
 ```bash
-supabase init       # 최초 1회 (supabase/config.toml 생성)
-supabase start      # Docker 컨테이너 기동 (최초엔 이미지 pull에 몇 분 걸림)
-supabase status     # API URL, anon key, DB URL 확인
+node -v              # v20.x 이상
+docker info          # 데몬이 응답해야 함
+supabase --version
 ```
 
-`.env.local` 예시 (값은 `supabase status` 출력에서 복사):
+> 하나라도 빠져 있으면 Claude Code에서 `/setup-dev-environment` 를 실행해 OS별 설치 가이드를 받으세요.
+
+### 3) Supabase 로컬 Postgres 컨테이너 기동
+
+이 프로젝트의 Supabase CLI 용도는 **로컬 컨테이너 기동뿐**입니다.
 
 ```bash
+supabase start       # 최초 실행 시 Docker 이미지 pull로 몇 분 걸림
+supabase status      # API URL · anon key · DB URL 출력
+```
+
+> `supabase/config.toml` 이 이미 커밋돼 있으므로 `supabase init` 은 다시 실행할 필요 없습니다.
+> `supabase migration new` / `supabase db push` / `supabase db reset` 은 이 프로젝트에서 **사용하지 않습니다.** 스키마 변경은 Drizzle이 전담합니다.
+
+### 4) `.env.local` 생성
+
+`.env.local` 은 `.gitignore` 대상이라 클론본에는 포함돼 있지 않습니다. 저장소 루트에 직접 만들고, **`anon key` 값만** 위 `supabase status` 출력에서 복사해 넣으세요. (URL과 DB URL은 로컬에서 항상 동일합니다.)
+
+```bash
+# .env.local
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<supabase status 출력의 anon key>
 DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 ```
 
-> `supabase migration new` / `supabase db push` / `supabase db reset`은 이 프로젝트에서 **사용하지 않습니다.** 스키마 변경은 Drizzle이 전담합니다.
+### 5) 로컬 DB에 마이그레이션 적용
 
-### 4) Next.js 앱을 Claude에게 생성시키기
-
-Claude Code 프롬프트 예시 (그대로 복사해서 써도 OK):
-
-```
-이 저장소 루트에 다음 스택으로 Next.js 앱을 만들어줘.
-- Next.js 14 App Router, TypeScript
-- Chakra UI v3 Provider 세팅 (app/providers.tsx)
-- Supabase JS 클라이언트(@supabase/supabase-js) — lib/supabase/client.ts, server.ts
-- Drizzle ORM — lib/db/index.ts, lib/db/schema.ts, drizzle.config.ts(CLAUDE.md 규약 그대로)
-- package.json 스크립트에 db:generate / db:migrate / db:studio 추가
-- CLAUDE.md의 디렉토리 컨벤션과 패키지 매니저(npm)를 그대로 따를 것
-```
-
-### 5) 첫 마이그레이션 (Drizzle)
-
-`lib/db/schema.ts`에 `tasks` 테이블이 정의돼 있으면:
+`drizzle/0000_*.sql` 이 이미 커밋돼 있으므로 곧바로 적용만 하면 `tasks` 테이블이 생깁니다.
 
 ```bash
-npm run db:generate   # drizzle/0000_xxx.sql 생성 — git에 커밋할 대상
-npm run db:migrate    # 로컬 Supabase DB에 적용
+npm run db:migrate
 ```
 
-### 6) 실행 확인
+> `npm run db:generate` 는 **스키마(`lib/db/schema.ts`)를 바꿨을 때**만 실행합니다. 클론 직후 첫 셋업에선 필요하지 않습니다.
+
+### 6) Next.js 개발 서버 실행
 
 ```bash
 npm run dev
 ```
 
-`http://localhost:3000`을 열어 페이지가 뜨는지 확인합니다.
+브라우저에서 `http://localhost:3000` 을 열어 Task 목록 화면이 뜨는지 확인합니다. 여기까지 성공하면 로컬 개발 환경 셋업 완료입니다.
 
-> 💡 2~6단계를 한 번에 진행하고 싶으면 Claude Code에서 `/dev-server` 를 실행하세요. 위 흐름을 자동화해 줍니다.
+> 💡 2~6단계를 한 번에 끝내고 싶으면 Claude Code에서 `/dev-server` 를 실행하세요. 위 흐름을 자동으로 수행하고 백그라운드에서 `npm run dev` 까지 띄워 줍니다.
 
 ---
 
