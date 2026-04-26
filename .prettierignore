@@ -4,5 +4,4 @@ drizzle
 .github
 package-lock.json
 *.md
-next-env.d.ts
 .playwright-mcp
