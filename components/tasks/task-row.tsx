@@ -23,13 +23,51 @@ function formatRange(start: string | null, due: string | null): string {
   return `${s ?? '—'} ~ ${d ?? '—'}`;
 }
 
-export function TaskRow({ task }: { task: Task }) {
+const INDENT_PX = 24;
+
+type Props = {
+  task: Task;
+  depth: number;
+  hasChildren: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+};
+
+export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props) {
   const [editOpen, setEditOpen] = useState(false);
 
   return (
     <>
       <Table.Row onClick={() => setEditOpen(true)} cursor="pointer" _hover={{ bg: 'bg.muted' }}>
-        <Table.Cell>{task.title}</Table.Cell>
+        <Table.Cell>
+          <HStack gap="2" pl={`${depth * INDENT_PX}px`}>
+            {hasChildren ? (
+              <button
+                type="button"
+                aria-label={expanded ? '접기' : '펼치기'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle();
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  fontSize: '0.875rem',
+                  width: '1em',
+                  textAlign: 'center',
+                }}
+              >
+                {expanded ? '▼' : '▶'}
+              </button>
+            ) : (
+              // 자식이 없으면 같은 폭의 spacer로 정렬 유지
+              <span style={{ width: '1em', display: 'inline-block' }} />
+            )}
+            <span>{task.title}</span>
+          </HStack>
+        </Table.Cell>
         <Table.Cell>{task.assignee ?? '—'}</Table.Cell>
         {/* 배지·⋯ 메뉴 셀은 자체 onClick이 행 클릭으로 bubble되지 않도록 stopPropagation */}
         <Table.Cell onClick={(e) => e.stopPropagation()}>
