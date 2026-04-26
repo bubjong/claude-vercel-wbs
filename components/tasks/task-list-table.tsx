@@ -2,6 +2,7 @@ import { HStack, Progress, Table, Text } from '@chakra-ui/react';
 import type { InferSelectModel } from 'drizzle-orm';
 import { tasks as tasksTable } from '@/lib/db/schema';
 import { StatusBadge } from './status-badge';
+import { TaskRowMenu } from './task-row-menu';
 
 type Task = InferSelectModel<typeof tasksTable>;
 
@@ -28,6 +29,7 @@ export function TaskListTable({ tasks }: { tasks: Task[] }) {
           <Table.ColumnHeader>상태</Table.ColumnHeader>
           <Table.ColumnHeader>진행률</Table.ColumnHeader>
           <Table.ColumnHeader>기간</Table.ColumnHeader>
+          <Table.ColumnHeader width="8" />
         </Table.Row>
       </Table.Header>
       <Table.Body>
@@ -51,6 +53,9 @@ export function TaskListTable({ tasks }: { tasks: Task[] }) {
               </HStack>
             </Table.Cell>
             <Table.Cell>{formatRange(task.startDate, task.dueDate)}</Table.Cell>
+            <Table.Cell textAlign="end">
+              <TaskRowMenu task={task} />
+            </Table.Cell>
           </Table.Row>
         ))}
       </Table.Body>
