@@ -100,14 +100,23 @@
 MVP 범위에서 `tasks` 테이블만 정의한다. 스키마는 **Drizzle TypeScript DSL이 원본**이며, 아래 형태로 `lib/db/schema.ts`에 둔다.
 
 ```ts
-import { pgTable, uuid, text, integer, date, timestamp, check } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  date,
+  timestamp,
+  check,
+  type AnyPgColumn,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const tasks = pgTable(
   'tasks',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    parentId: uuid('parent_id').references((): any => tasks.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): AnyPgColumn => tasks.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     description: text('description'),
     assignee: text('assignee'),
@@ -124,6 +133,8 @@ export const tasks = pgTable(
   })
 );
 ```
+
+`parentId`의 self-reference에 `AnyPgColumn`을 쓰는 이유: 자기 참조 FK는 `tasks` 식별자가 정의 도중 자기 자신을 참조해야 해서 TypeScript가 추론을 미루게 만들어야 한다. `any`는 ESLint `@typescript-eslint/no-explicit-any` 규칙을 어기므로, Drizzle이 공식 제공하는 `AnyPgColumn` 타입을 사용한다.
 
 - 스키마 변경은 이 파일만 수정한다. 수동으로 SQL을 작성해 `drizzle/` 폴더에 넣지 말 것 — 반드시 `drizzle-kit generate`가 만든 파일만 커밋한다.
 - **MVP 단계에서 RLS는 사용하지 않는다.** (단일 사용자 가정) 기능 요구사항이 바뀌어 RLS가 필요해지면 사용자에게 먼저 확인한다.
