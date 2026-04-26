@@ -16,6 +16,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@chakra-ui/react": "^3.35.0",
+    "@emotion/react": "^11.14.0",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.4",
     "postgres": "^3.4.9",
