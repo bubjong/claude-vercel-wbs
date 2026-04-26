@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Button, HStack } from '@chakra-ui/react';
 import { toaster } from '@/components/ui/toaster';
+import { TaskCreateModal } from './task-create-modal';
 
 function notImplemented(featureName: string) {
   toaster.create({
@@ -12,17 +14,23 @@ function notImplemented(featureName: string) {
 }
 
 export function TaskListToolbar() {
+  const [createOpen, setCreateOpen] = useState(false);
+
   return (
-    <HStack gap="2" justify="flex-end">
-      <Button colorPalette="blue" onClick={() => notImplemented('기능 B — 작업 생성')}>
-        + 작업 추가
-      </Button>
-      <Button variant="outline" onClick={() => notImplemented('기능 F — CSV 내보내기')}>
-        CSV 내보내기
-      </Button>
-      <Button variant="outline" onClick={() => notImplemented('기능 F — CSV 불러오기')}>
-        CSV 불러오기
-      </Button>
-    </HStack>
+    <>
+      <HStack gap="2" justify="flex-end">
+        <Button colorPalette="blue" onClick={() => setCreateOpen(true)}>
+          + 작업 추가
+        </Button>
+        <Button variant="outline" onClick={() => notImplemented('기능 F — CSV 내보내기')}>
+          CSV 내보내기
+        </Button>
+        <Button variant="outline" onClick={() => notImplemented('기능 F — CSV 불러오기')}>
+          CSV 불러오기
+        </Button>
+      </HStack>
+
+      <TaskCreateModal open={createOpen} onOpenChange={setCreateOpen} />
+    </>
   );
 }
