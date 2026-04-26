@@ -83,8 +83,12 @@ export function TaskCreateModal({ open, onOpenChange, parentId, parentTitle }: P
     state.startDate && state.dueDate && state.dueDate < state.startDate
       ? '목표 기한은 시작일 이후여야 합니다.'
       : '';
+  const progressError =
+    Number.isNaN(state.progress) || state.progress < 0 || state.progress > 100
+      ? '진행률은 0과 100 사이여야 합니다.'
+      : '';
 
-  const canSubmit = !titleError && !dateError && !submitting;
+  const canSubmit = !titleError && !dateError && !progressError && !submitting;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -201,7 +205,7 @@ export function TaskCreateModal({ open, onOpenChange, parentId, parentTitle }: P
                   </Select.Root>
                 </Field.Root>
 
-                <Field.Root>
+                <Field.Root invalid={!!progressError}>
                   <Field.Label>진행률 (0–100)</Field.Label>
                   <Input
                     type="number"
@@ -212,9 +216,13 @@ export function TaskCreateModal({ open, onOpenChange, parentId, parentTitle }: P
                       dispatch({ type: 'set-progress', value: Number(e.target.value) })
                     }
                   />
-                  <Field.HelperText>
-                    100을 입력하면 상태가 자동으로 &apos;완료&apos;가 됩니다.
-                  </Field.HelperText>
+                  {progressError ? (
+                    <Field.ErrorText>{progressError}</Field.ErrorText>
+                  ) : (
+                    <Field.HelperText>
+                      100을 입력하면 상태가 자동으로 &apos;완료&apos;가 됩니다.
+                    </Field.HelperText>
+                  )}
                 </Field.Root>
 
                 <Field.Root>
