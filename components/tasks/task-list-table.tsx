@@ -1,23 +1,9 @@
-import { HStack, Progress, Table, Text } from '@chakra-ui/react';
+import { Table } from '@chakra-ui/react';
 import type { InferSelectModel } from 'drizzle-orm';
 import { tasks as tasksTable } from '@/lib/db/schema';
-import { StatusBadge } from './status-badge';
-import { TaskRowMenu } from './task-row-menu';
+import { TaskRow } from './task-row';
 
 type Task = InferSelectModel<typeof tasksTable>;
-
-function formatMD(s: string | null): string | null {
-  if (!s) return null;
-  const [, mm, dd] = s.split('-');
-  return `${Number(mm)}/${Number(dd)}`;
-}
-
-function formatRange(start: string | null, due: string | null): string {
-  const s = formatMD(start);
-  const d = formatMD(due);
-  if (!s && !d) return '—';
-  return `${s ?? '—'} ~ ${d ?? '—'}`;
-}
 
 export function TaskListTable({ tasks }: { tasks: Task[] }) {
   return (
@@ -34,29 +20,7 @@ export function TaskListTable({ tasks }: { tasks: Task[] }) {
       </Table.Header>
       <Table.Body>
         {tasks.map((task) => (
-          <Table.Row key={task.id}>
-            <Table.Cell>{task.title}</Table.Cell>
-            <Table.Cell>{task.assignee ?? '—'}</Table.Cell>
-            <Table.Cell>
-              <StatusBadge status={task.status} />
-            </Table.Cell>
-            <Table.Cell>
-              <HStack gap="2">
-                <Text fontSize="sm" minW="3.5ch">
-                  {task.progress}%
-                </Text>
-                <Progress.Root value={task.progress} size="xs" maxW="80px" flex="1">
-                  <Progress.Track>
-                    <Progress.Range />
-                  </Progress.Track>
-                </Progress.Root>
-              </HStack>
-            </Table.Cell>
-            <Table.Cell>{formatRange(task.startDate, task.dueDate)}</Table.Cell>
-            <Table.Cell textAlign="end">
-              <TaskRowMenu task={task} />
-            </Table.Cell>
-          </Table.Row>
+          <TaskRow key={task.id} task={task} />
         ))}
       </Table.Body>
     </Table.Root>
