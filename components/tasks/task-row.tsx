@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { HStack, Progress, Table, Text } from '@chakra-ui/react';
 import type { InferSelectModel } from 'drizzle-orm';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { tasks as tasksTable } from '@/lib/db/schema';
 import { StatusBadgePopover } from './status-badge-popover';
 import { TaskEditModal } from './task-edit-modal';
@@ -54,16 +55,17 @@ export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props)
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
-                  fontSize: '0.875rem',
-                  width: '1em',
-                  textAlign: 'center',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  width: '1rem',
+                  height: '1rem',
                 }}
               >
-                {expanded ? '▼' : '▶'}
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
               </button>
             ) : (
               // 자식이 없으면 같은 폭의 spacer로 정렬 유지
-              <span style={{ width: '1em', display: 'inline-block' }} />
+              <span style={{ width: '1rem', display: 'inline-block' }} />
             )}
             <span>{task.title}</span>
           </HStack>
