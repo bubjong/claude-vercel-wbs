@@ -47,7 +47,9 @@ supabase/.branches/
 drizzle/.cache/
 
 # ── IDE / Editor ──────────────────────────────────────────
-.vscode/
+# .vscode/settings.json 만 프로젝트 공용으로 커밋, 나머지는 개인 설정.
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo

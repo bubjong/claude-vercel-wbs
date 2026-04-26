@@ -1,0 +1,6 @@
+# 커밋 전 검증: lint-staged(staged 파일에 eslint --fix + prettier --write) → npm run build
+# 한 단계라도 실패하면 커밋 중단.
+set -e
+
+npx lint-staged
+npm run build
