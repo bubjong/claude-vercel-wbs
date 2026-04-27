@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Box, HStack, Portal, Text, VStack } from '@chakra-ui/react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { TaskNode } from '@/lib/tasks/tree';
 import {
   barStyle,
@@ -17,7 +18,13 @@ const COL_WIDTH = 64; // 주당 가로 픽셀
 const NAME_COL_WIDTH = 240;
 const NAME_INDENT = 16;
 
-export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
+type Props = {
+  nodes: TaskNode[];
+  collapsed: ReadonlySet<string>;
+  onToggle: (id: string) => void;
+};
+
+export function TaskListGantt({ nodes, collapsed, onToggle }: Props) {
   const today = new Date();
   const rows = nodes.map((n) => n.task);
   const { start: gridStart, totalDays } = computeGridRange(rows, today);
@@ -78,26 +85,59 @@ export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
           >
             작업
           </Box>
-          {nodes.map((node) => (
-            <Box
-              key={node.task.id}
-              height={`${ROW_HEIGHT}px`}
-              display="flex"
-              alignItems="center"
-              pl={`${12 + node.depth * NAME_INDENT}px`}
-              pr="2"
-              borderBottomWidth="1px"
-              borderColor="gray.100"
-              fontSize="sm"
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-              title={node.task.title}
-              textDecoration={node.task.status === 'done' ? 'line-through' : undefined}
-            >
-              {node.task.title}
-            </Box>
-          ))}
+          {nodes.map((node) => {
+            const expanded = !collapsed.has(node.task.id);
+            return (
+              <Box
+                key={node.task.id}
+                height={`${ROW_HEIGHT}px`}
+                display="flex"
+                alignItems="center"
+                gap="2"
+                pl={`${12 + node.depth * NAME_INDENT}px`}
+                pr="2"
+                borderBottomWidth="1px"
+                borderColor="gray.100"
+                fontSize="sm"
+                title={node.task.title}
+              >
+                {node.hasChildren ? (
+                  <button
+                    type="button"
+                    aria-label={expanded ? '접기' : '펼치기'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggle(node.task.id);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      width: '1rem',
+                      height: '1rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </button>
+                ) : (
+                  // 자식이 없으면 같은 폭의 spacer로 정렬 유지 (목록 뷰 TaskRow와 동일)
+                  <span style={{ width: '1rem', display: 'inline-block', flexShrink: 0 }} />
+                )}
+                <Box
+                  overflow="hidden"
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                  textDecoration={node.task.status === 'done' ? 'line-through' : undefined}
+                >
+                  {node.task.title}
+                </Box>
+              </Box>
+            );
+          })}
         </VStack>
 
         {/* 우측: 날짜 그리드 (가로 스크롤) */}

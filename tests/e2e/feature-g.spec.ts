@@ -153,4 +153,100 @@ test.describe('기능 G — 간트 일정 시각화', () => {
     await page.mouse.move(0, 0);
     await expect(tooltip).toHaveCount(0);
   });
+
+  test('J19: 간트 부모 토글 → 좌·우 모두에서 자식 사라짐 + 다시 클릭 시 복원', async ({ page }) => {
+    const parent = await seedTask({
+      title: '킥오프 미팅',
+      startDate: '2026-04-01',
+      dueDate: '2026-04-10',
+    });
+    await seedTask({
+      title: '아젠다 초안',
+      startDate: '2026-04-02',
+      dueDate: '2026-04-05',
+      parentId: parent.id,
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '간트' }).click();
+
+    // 초기: 좌측 라벨 2행, 우측 막대 2개 (1:1 정렬)
+    await expect(page.getByText('킥오프 미팅', { exact: true })).toBeVisible();
+    await expect(page.getByText('아젠다 초안', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('gantt-bar')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: '접기' })).toBeVisible();
+
+    // 접기 → 자식 좌·우 모두 사라짐, 토글이 '펼치기'로 변경
+    await page.getByRole('button', { name: '접기' }).click();
+    await expect(page.getByText('아젠다 초안', { exact: true })).not.toBeVisible();
+    await expect(page.getByTestId('gantt-bar')).toHaveCount(1);
+    await expect(page.getByRole('button', { name: '펼치기' })).toBeVisible();
+
+    // 펼치기 → 다시 좌·우 2행으로 복원
+    await page.getByRole('button', { name: '펼치기' }).click();
+    await expect(page.getByText('아젠다 초안', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('gantt-bar')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: '접기' })).toBeVisible();
+  });
+
+  test('J19 공유 상태: 간트에서 접은 뒤 목록으로 전환해도 접힘 유지 + 그 반대', async ({
+    page,
+  }) => {
+    const parent = await seedTask({
+      title: '킥오프 미팅',
+      startDate: '2026-04-01',
+      dueDate: '2026-04-10',
+    });
+    await seedTask({ title: '아젠다 초안', parentId: parent.id });
+
+    await page.goto('/');
+
+    // 1) 간트 뷰에서 접기
+    await page.getByRole('button', { name: '간트' }).click();
+    await page.getByRole('button', { name: '접기' }).click();
+    await expect(page.getByRole('button', { name: '펼치기' })).toBeVisible();
+
+    // 2) 목록 뷰로 전환 → 자식 셀이 보이지 않고 토글이 '펼치기' 상태
+    await page.getByRole('button', { name: '목록' }).click();
+    const childCell = page.getByRole('cell', { name: /아젠다 초안/ }).first();
+    await expect(childCell).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '펼치기' })).toBeVisible();
+
+    // 3) 목록에서 다시 펼친 뒤 간트로 → 자식 행도 같이 펼쳐져 있음
+    await page.getByRole('button', { name: '펼치기' }).click();
+    await page.getByRole('button', { name: '간트' }).click();
+    await expect(page.getByText('아젠다 초안', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '접기' })).toBeVisible();
+  });
+
+  test('J19 새로고침: reload 시 펼침 상태가 초기화되어 자식이 다시 보인다', async ({ page }) => {
+    const parent = await seedTask({ title: '킥오프 미팅' });
+    await seedTask({ title: '아젠다 초안', parentId: parent.id });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '간트' }).click();
+    await page.getByRole('button', { name: '접기' }).click();
+    await expect(page.getByRole('button', { name: '펼치기' })).toBeVisible();
+
+    await page.reload();
+
+    // 기본 뷰는 목록. 새로고침 후 모두 펼친 상태로 복귀 → 자식 셀과 '접기' 버튼 노출.
+    await expect(page.getByRole('button', { name: '접기' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: /아젠다 초안/ }).first()).toBeVisible();
+  });
+
+  test('자식 없는 부모 행은 간트 좌측 라벨에 토글 버튼이 없다', async ({ page }) => {
+    await seedTask({
+      title: '리서치',
+      startDate: '2026-04-01',
+      dueDate: '2026-04-05',
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '간트' }).click();
+
+    await expect(page.getByTestId('gantt-root')).toBeVisible();
+    await expect(page.getByRole('button', { name: '접기' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '펼치기' })).not.toBeVisible();
+  });
 });
