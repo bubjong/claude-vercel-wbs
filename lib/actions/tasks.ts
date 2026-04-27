@@ -31,6 +31,7 @@ export type UpdateTaskInput = {
 
 export type CreateTaskResult = { ok: true; taskId: string } | { ok: false; error: string };
 export type UpdateTaskResult = { ok: true } | { ok: false; error: string };
+export type DeleteTaskResult = { ok: true } | { ok: false; error: string };
 
 type CommonInput = {
   title?: string;
@@ -130,4 +131,16 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Up
 
   revalidatePath('/');
   return { ok: true };
+}
+
+export async function deleteTask(id: string): Promise<DeleteTaskResult> {
+  // 자식 행은 schema 의 onDelete: 'cascade' 로 함께 사라진다.
+  await db.delete(tasks).where(eq(tasks.id, id));
+  revalidatePath('/');
+  return { ok: true };
+}
+
+export async function getDirectChildCount(parentId: string): Promise<number> {
+  const rows = await db.select({ id: tasks.id }).from(tasks).where(eq(tasks.parentId, parentId));
+  return rows.length;
 }
