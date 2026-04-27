@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { tasks } from '@/lib/db/schema';
+import { autoSyncStatusByProgress, isValidDateRange } from '@/lib/db/validation';
 
 export type TaskStatus = 'todo' | 'doing' | 'done';
 
@@ -46,7 +47,7 @@ function validateTaskInput(input: CommonInput): { ok: true } | { ok: false; erro
   if (input.title !== undefined && input.title.trim() === '') {
     return { ok: false, error: '제목은 필수입니다.' };
   }
-  if (input.startDate && input.dueDate && input.dueDate < input.startDate) {
+  if (!isValidDateRange(input.startDate, input.dueDate)) {
     return { ok: false, error: '목표 기한은 시작일 이후여야 합니다.' };
   }
   if (input.progress !== undefined) {
@@ -57,12 +58,11 @@ function validateTaskInput(input: CommonInput): { ok: true } | { ok: false; erro
   return { ok: true };
 }
 
-// 자동 동기화 (SPEC.md §2 B-4 — B·C 공통): progress가 100 이상이면 status를 'done'으로 강제.
+// 자동 동기화: 진행률이 들어왔을 때만 상태를 보정한다.
 function applyAutoSync<T extends CommonInput>(input: T): T {
-  if (input.progress !== undefined && input.progress >= 100) {
-    return { ...input, status: 'done' };
-  }
-  return input;
+  if (input.progress === undefined) return input;
+  const synced = autoSyncStatusByProgress(input.status ?? 'todo', input.progress);
+  return synced === input.status ? input : { ...input, status: synced };
 }
 
 export async function createTask(input: CreateTaskInput): Promise<CreateTaskResult> {
