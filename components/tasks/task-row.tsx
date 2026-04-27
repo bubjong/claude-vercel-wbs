@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { HStack, Progress, Table, Text } from '@chakra-ui/react';
+import { Badge, HStack, Progress, Table, Text } from '@chakra-ui/react';
 import type { InferSelectModel } from 'drizzle-orm';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { tasks as tasksTable } from '@/lib/db/schema';
+import { isOverdue } from '@/lib/gantt/date-grid';
 import { StatusBadgePopover } from './status-badge-popover';
 import { TaskEditModal } from './task-edit-modal';
 import { TaskRowMenu } from './task-row-menu';
@@ -36,10 +37,16 @@ type Props = {
 
 export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props) {
   const [editOpen, setEditOpen] = useState(false);
+  const overdue = isOverdue(task.dueDate, task.status);
 
   return (
     <>
-      <Table.Row onClick={() => setEditOpen(true)} cursor="pointer" _hover={{ bg: 'bg.muted' }}>
+      <Table.Row
+        onClick={() => setEditOpen(true)}
+        cursor="pointer"
+        _hover={{ bg: 'bg.muted' }}
+        data-overdue={overdue ? 'true' : 'false'}
+      >
         <Table.Cell>
           <HStack gap="2" pl={`${depth * INDENT_PX}px`}>
             {hasChildren ? (
@@ -87,7 +94,18 @@ export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props)
             </Progress.Root>
           </HStack>
         </Table.Cell>
-        <Table.Cell>{formatRange(task.startDate, task.dueDate)}</Table.Cell>
+        <Table.Cell>
+          <HStack gap="2">
+            <Text color={overdue ? 'red.600' : undefined} fontSize="sm">
+              {formatRange(task.startDate, task.dueDate)}
+            </Text>
+            {overdue && (
+              <Badge colorPalette="red" size="sm" data-testid="overdue-badge">
+                지남
+              </Badge>
+            )}
+          </HStack>
+        </Table.Cell>
         <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
           <TaskRowMenu task={task} />
         </Table.Cell>
