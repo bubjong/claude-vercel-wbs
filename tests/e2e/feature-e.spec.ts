@@ -64,16 +64,25 @@ test.describe('기능 E — 계층 (Hierarchy)', () => {
     await expect(page.getByRole('button', { name: '펼치기' })).not.toBeVisible();
   });
 
-  test('깊이 제한 UI: 자식 행에는 ⋯ 메뉴 자체가 노출되지 않는다', async ({ page }) => {
+  test('깊이 제한 UI: 자식 행 ⋯ 메뉴에는 "하위 작업 추가" 항목이 없다', async ({ page }) => {
     const parent = await seedTask({ title: '기획 회의' });
     await seedTask({ title: '아젠다 초안', parentId: parent.id });
 
     await page.goto('/');
 
-    // 부모 행에는 ⋯ 메뉴 노출
+    // 부모/자식 행 모두 ⋯ 메뉴는 노출 (D-1: 삭제는 양쪽 모두 가능)
     await expect(page.getByRole('button', { name: '기획 회의 작업 메뉴' })).toBeVisible();
-    // 자식 행에는 ⋯ 메뉴 자체 없음
-    await expect(page.getByRole('button', { name: '아젠다 초안 작업 메뉴' })).not.toBeVisible();
+    await expect(page.getByRole('button', { name: '아젠다 초안 작업 메뉴' })).toBeVisible();
+
+    // 부모 행 ⋯ 메뉴 → "하위 작업 추가" 항목 노출
+    await page.getByRole('button', { name: '기획 회의 작업 메뉴' }).click();
+    await expect(page.getByRole('menuitem', { name: '하위 작업 추가' })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // 자식 행 ⋯ 메뉴 → "하위 작업 추가" 항목 미노출, "삭제"만 노출
+    await page.getByRole('button', { name: '아젠다 초안 작업 메뉴' }).click();
+    await expect(page.getByRole('menuitem', { name: '하위 작업 추가' })).not.toBeVisible();
+    await expect(page.getByRole('menuitem', { name: '삭제' })).toBeVisible();
   });
 
   test('깊이 제한 서버: createTask가 손자(자식의 자식) 시도를 거부', async () => {
