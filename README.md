@@ -260,81 +260,139 @@ npm run dev
 
 ## 원격 배포하기
 
-전체 흐름은 다음과 같습니다.
+로컬에서 잘 돌아가는 WBS 앱을 공개 URL에 띄우기 위한 절차입니다. 코드/스키마 변경은 없고 **인프라 설정만** 합니다.
+
+전체 흐름:
 
 ```
 Supabase Cloud 프로젝트 생성
- └─ Direct URL / Pooler URL 수집
-      └─ GitHub Actions secret 등록 (PRODUCTION_DATABASE_URL = Direct)
-           └─ main 브랜치 push → db-migrate 워크플로우가 자동 실행 ✅
-                └─ Vercel에 환경변수 설정 (NEXT_PUBLIC_* + DATABASE_URL = Pooler)
-                     └─ vercel --prod → 공개 URL 획득
+ └─ 두 종류 connection string 수집 (5432 = 마이그레이션용 / 6543 = 런타임용)
+      └─ GitHub repo → Settings → Environments → production
+           └─ secret PRODUCTION_DATABASE_URL = 5432 문자열
+                └─ main 브랜치 push → db-migrate 워크플로우 자동 실행 ✅
+                     └─ Vercel Dashboard → Add New → Project → GitHub repo Import
+                          └─ Production env에 DATABASE_URL = 6543 문자열 추가 → Deploy
+                               └─ 공개 URL 획득
 ```
 
-### 1) Supabase Cloud 프로젝트 생성
+> 이 프로젝트는 `supabase-js`를 사용하지 않고 Drizzle + `postgres` 드라이버로 DB에 직접 접속합니다.
+> 따라서 Vercel에 등록할 환경변수는 `DATABASE_URL` 하나뿐이며, `NEXT_PUBLIC_SUPABASE_*`는 필요 없습니다.
 
-1. https://supabase.com/dashboard 에서 **New project** 생성 (리전은 가까운 곳 — 예: `Northeast Asia (Seoul)`).
-2. 프로젝트 생성 완료 후 **Project Settings**에서 두 가지 정보를 수집합니다.
-   - **Settings → API**
-     - `URL` → `NEXT_PUBLIC_SUPABASE_URL`
-     - `anon public` 키 → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - **Settings → Database → Connection string**
-     - **"Session"** 또는 **"Direct connection"** (port 5432) → GitHub Actions용 `PRODUCTION_DATABASE_URL` (마이그레이션 실행용)
-     - **"Transaction"** (port 6543) → Vercel용 `DATABASE_URL` (런타임 쿼리용)
-     - ⚠️ **두 용도를 섞지 마세요.** Transaction pooler로 `drizzle-kit migrate`를 실행하면 prepared statement 충돌로 실패합니다.
+### 0) 사전 점검 (5분)
 
-### 2) GitHub Actions secret 등록 & 프로덕션 마이그레이션 자동화
+진행 전에 아래가 모두 OK여야 합니다:
 
-이 저장소에는 이미 `.github/workflows/db-migrate.yml` 이 들어 있습니다. `main` 브랜치에 push되면 Drizzle 마이그레이션이 자동으로 원격 Supabase DB에 적용됩니다.
+- [ ] `git status` 결과가 깨끗하고 `main` 브랜치에 push가 끝나 있다.
+- [ ] 로컬에서 `npm run build`가 에러 없이 통과한다 (`.env.local`의 로컬 `DATABASE_URL`로).
+- [ ] `git ls-files drizzle/`로 `0000_*.sql`과 `meta/_journal.json`이 추적되는 게 보인다.
+- [ ] GitHub 원격 저장소가 존재한다 (Vercel이 import할 대상).
 
-**사전 준비 (GitHub 저장소 UI에서)**:
+### 1) 단계 A — 원격 Supabase 프로젝트 생성
 
-1. GitHub 저장소 페이지 → **Settings → Environments → New environment** → 이름 `production`.
-2. 생성된 `production` environment 안에서 **Add secret** → 이름 `PRODUCTION_DATABASE_URL`, 값은 위에서 수집한 **Session/Direct** 연결 문자열.
-   > 비밀번호에 특수문자가 있으면 URL-encoding 필요 (예: `@` → `%40`). Supabase 대시보드가 복사용 값을 이미 인코딩해서 제공하니 보통 그대로 붙여 넣으면 됩니다.
-3. (선택) 같은 environment에서 **Required reviewers**를 설정하면 프로덕션 마이그레이션을 승인제로 돌릴 수 있습니다.
+1. https://supabase.com 로그인 → **New project**.
+2. Region은 사용자에게 가까운 곳 (예: `Northeast Asia (Seoul)`).
+3. DB password를 강하게 정하고 **반드시 어딘가에 안전하게 메모**합니다. 이후 connection string에 들어가며, 잃어버리면 재발급해야 합니다.
+4. 프로젝트 provisioning 완료까지 ~2분 대기.
 
-**동작 확인**:
+**두 종류의 connection string을 확보**합니다. Supabase Dashboard → 해당 프로젝트 → **Settings → Database → Connection string** 에서 아래 두 가지를 모두 복사해 둡니다.
+
+| 용도 | 어떤 connection | port | 어디에 넣나 |
+|---|---|---|---|
+| 마이그레이션 (GitHub Actions) | **Session pooler** 또는 **Direct connection** | **5432** | GitHub `production` env secret `PRODUCTION_DATABASE_URL` |
+| 런타임 쿼리 (Vercel 서버리스) | **Transaction pooler** | **6543** | Vercel Production env `DATABASE_URL` |
+
+⚠️ **두 connection은 반드시 분리합니다.** Transaction pooler(6543)로 `drizzle-kit migrate`를 돌리면 prepared statement 충돌로 실패합니다.
+
+각 문자열의 `[YOUR-PASSWORD]` 자리표시자는 단계 1에서 만든 비밀번호로 치환합니다. 비밀번호에 특수문자가 있으면 URL-encoding이 필요합니다 (`@` → `%40` 등). Supabase Dashboard가 복사용 값을 이미 인코딩해서 주는 경우가 많으니 우선 그대로 붙여 넣고 동작 확인.
+
+### 2) 단계 B — GitHub Actions로 원격 DB 마이그레이션
+
+이 저장소에는 이미 `.github/workflows/db-migrate.yml` 이 들어 있어, `production` environment에 secret을 등록하면 `main` push 시 자동으로 원격 DB 마이그레이션이 적용됩니다.
+
+**B-1. `production` environment + secret 등록**
+
+1. GitHub repo → **Settings → Environments → New environment** → 이름 `production`.
+2. 그 환경에서 **Add secret** 클릭.
+3. Name: `PRODUCTION_DATABASE_URL`.
+4. Value: 단계 A에서 얻은 **port 5432** 문자열 (Session pooler 또는 Direct).
+5. (선택) 같은 environment에 **Required reviewers**를 걸면 프로덕션 마이그레이션을 승인제로 돌릴 수 있습니다.
+
+**B-2. 워크플로우 실행 트리거**
+
+`db-migrate.yml`은 `drizzle/**`, `lib/db/schema.ts` 등이 변경된 push에서만 자동 실행됩니다. 첫 배포 때는 코드 변경 없이 secret만 등록한 상태이므로 **수동 트리거**가 필요할 수 있습니다.
+
+옵션 1 — Actions 탭에서 수동 실행: repo → Actions 탭 → **db-migrate** → **Run workflow** 버튼 (워크플로우에 `workflow_dispatch`가 등록돼 있으면 보임).
+
+옵션 2 — 빈 커밋으로 트리거 (가장 확실):
 
 ```bash
+git commit --allow-empty -m "chore: 원격 DB 마이그레이션 트리거"
 git push origin main
 gh run watch        # 실행 중인 워크플로우를 실시간 관찰
 ```
 
-Actions 탭의 `db-migrate` 잡이 ✅가 되면 원격 Supabase DB에 마이그레이션이 반영된 것입니다. 이후 Supabase Studio의 **Table Editor**에서 `tasks` 테이블이 보여야 합니다.
+> 빈 커밋은 paths 필터를 통과하지 않을 수 있습니다. 통과하지 않으면 `drizzle/meta/_journal.json`에 줄 끝 공백 같은 무해한 변경을 줘서 커밋하거나, 워크플로우에 `workflow_dispatch:`를 추가해 옵션 1을 쓰세요.
 
-### 3) Vercel 프로젝트 & 배포
+**B-3. 결과 확인**
 
-```bash
-vercel login
-vercel                        # 처음 실행 시 프로젝트 연결 질문에 답
-```
+- repo → Actions 탭 → 가장 최근 **db-migrate** 실행 결과 초록 체크.
+- Supabase Dashboard → **Table editor** 에서 `tasks` 테이블과 컬럼 (`id`, `parent_id`, `title`, `status`, `progress`, `start_date`, `due_date` 등)이 보이면 OK.
 
-환경변수 등록 (Production 스코프):
+### 3) 단계 C — Vercel에 배포 (Dashboard import)
 
-```bash
-vercel env add NEXT_PUBLIC_SUPABASE_URL production
-vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
-vercel env add DATABASE_URL production   # ⚠️ Transaction pooler(port 6543) 문자열
-```
+1. https://vercel.com 로그인 → **Add New → Project**.
+2. 좌측 GitHub repo 목록에서 이 저장소 선택 → **Import**.
+3. Framework preset이 자동으로 **Next.js**로 잡혀 있는지 확인 (그대로 둠).
+4. **Environment Variables** 섹션 펼치기:
+   - Name: `DATABASE_URL`
+   - Value: 단계 A에서 얻은 **port 6543 Transaction pooler** 문자열
+   - Environment: **Production**만 체크 (Preview/Development는 추후 별도 DB가 필요해질 때 채움)
+5. **Deploy** 클릭 → 빌드 로그를 끝까지 봅니다 (~2분).
+6. 성공 시 `https://<프로젝트명>-<해시>.vercel.app` 형태의 공개 URL이 나옵니다.
 
-배포:
+이후로는 `main` 브랜치에 push할 때마다 Vercel이 자동으로 재배포합니다.
 
-```bash
-vercel --prod
-```
+> **CLI를 선호한다면**: `vercel login` → `vercel link` → `vercel env add DATABASE_URL production` → `vercel --prod` 로도 동일한 결과가 나옵니다.
 
-출력된 `https://<project>.vercel.app`이 **과제 제출용 공개 URL**입니다. 접속해 체크리스트 전 항목이 동작하는지 확인하세요.
+### 4) 단계 D — 배포 검증
 
-### 4) 이후 변경 흐름
+브라우저로 공개 URL을 열고 아래를 차례로 확인합니다:
+
+- [ ] 페이지가 500 없이 로드되고, 빈 Task 목록이 보인다.
+- [ ] "새 Task" 버튼으로 Task 생성 → 목록에 즉시 반영.
+- [ ] 상태 토글 (`todo` → `doing` → `done`).
+- [ ] 자식 Task 추가로 계층이 정상 표시.
+- [ ] CSV import (구현돼 있다면) 정상 동작.
+- [ ] Gantt 뷰가 정상 렌더 (오늘 달 기준 5개월).
+- [ ] 새로고침 후에도 데이터가 그대로 → DB에 저장됐다는 증거.
+- [ ] Supabase Dashboard → Table editor → `tasks` 행이 늘어나는 게 보임.
+
+`USER_JOURNEY.md`의 J1·J2·J5 정도를 수동 회귀로 더 돌려도 좋습니다.
+
+### 5) 배포 단계 흔한 실패 & 처방
+
+| 증상 | 원인 | 처방 |
+|---|---|---|
+| Vercel 빌드는 성공, 페이지가 500 | `DATABASE_URL`이 Production 스코프에 없거나 오타 | Vercel → Settings → Environment Variables 재확인 |
+| 페이지 로드 시 `prepared statement "s1" already exists` | 런타임에 port 5432 connection을 사용 중 | Vercel `DATABASE_URL`을 **6543 Transaction pooler**로 교체 후 재배포 |
+| GitHub Actions에서 같은 prepared statement 오류 | 마이그레이션을 6543 connection으로 시도 | `PRODUCTION_DATABASE_URL` secret을 **5432**(Session/Direct)로 교체 |
+| 런타임에서 `Too many connections` | Vercel이 Direct connection(5432) 문자열을 사용 중 | Vercel `DATABASE_URL`을 Transaction pooler(6543)로 교체 |
+| Action 통과, 그러나 Vercel 페이지에 데이터가 안 들어감 | 두 환경이 서로 다른 Supabase 프로젝트를 가리킴 | 두 connection string의 project ref(`db.xxxxxx.supabase.co`)가 동일한지 확인 |
+| Action 로그에 `permission denied` 또는 `password authentication failed` | 비밀번호 자리표시자 `[YOUR-PASSWORD]`가 그대로 들어감 | 단계 A에서 만든 비밀번호로 치환 |
+| Action에서 `Secret not found` | secret이 repo 레벨에 있고 workflow는 `environment: production`을 요구 | Settings → Environments → `production`에 secret을 다시 등록 |
+| Vercel 빌드에서 의존성 오류 | (드뭄) lockfile 동기화 안 됨 | `npm install` 후 `package-lock.json` 커밋·push, 재배포 |
+
+### 6) 이후 변경 흐름
 
 스키마를 바꿔야 할 때:
 
 1. `lib/db/schema.ts` 수정
 2. `npm run db:generate` → 새 마이그레이션 파일 커밋
-3. `npm run db:migrate` 로 로컬 확인
+3. `npm run db:migrate`로 로컬 확인
 4. `git push origin main` → GitHub Actions가 **프로덕션**에 자동 적용
-5. Vercel은 push에 연결돼 있으면 앱 코드도 자동 배포 (그렇지 않으면 `vercel --prod`)
+5. Vercel은 같은 push로 앱 코드를 자동 재배포
+
+**사람이 원격 DB에 직접 `drizzle-kit migrate`를 쏘지 않습니다.**
 
 ---
 
