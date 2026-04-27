@@ -25,7 +25,8 @@ description: SPEC.md와 USER_JOURNEY.md를 근거로 새 기능의 구현 계획
 - `test -f SPEC.md && test -f USER_JOURNEY.md` — 두 문서가 저장소 루트에 있는가
 - `test -d plan || mkdir -p plan` — `plan/` 디렉터리 준비 (없으면 생성)
 - `gh auth status` — GitHub CLI 로그인 상태
-- `gh repo view --json nameWithOwner -q .nameWithOwner` — origin 저장소가 제대로 보이는가
+- `git remote get-url origin` — **origin** 의 URL (수강생 본인 저장소). 이슈는 **반드시 origin** 에 등록하므로 이 값이 정답.
+- `gh repo set-default $(git remote get-url origin | sed -E 's#.*[:/]([^/]+/[^/]+)\.git#\1#')` — `gh` 의 default repo 를 origin 으로 고정. fork 저장소에서는 default 가 upstream 으로 잡혀 있어 이 단계를 건너뛰면 이슈가 upstream(예: 강사 저장소)에 잘못 등록된다.
 - `git status --porcelain` — 작업 트리가 깨끗한지 (필수는 아니나 안내 목적)
 
 ## 절차
@@ -77,6 +78,8 @@ description: SPEC.md와 USER_JOURNEY.md를 근거로 새 기능의 구현 계획
 ### Phase 4 — GitHub 이슈 등록
 
 수강생 승인 후 `gh issue create` 로 등록한다.
+
+> ⚠️ **반드시 origin 저장소에 등록한다.** upstream(강사/원본) 저장소는 본인이 권한이 없거나, 다른 수강생들의 학습 흐름을 어지럽힌다. 선행 조건의 `gh repo set-default` 가 origin 을 가리키는지 다시 확인하고, 의심되면 `gh issue create --repo $(git remote get-url origin | sed -E 's#.*[:/]([^/]+/[^/]+)\.git#\1#') ...` 처럼 `--repo` 로 명시한다.
 
 **이슈 제목 컨벤션** — `기능 {레터} — {짧은 제목}` (필요 시 `(Sub-feature)`):
 - 예: `기능 F-1 — CSV 내보내기`
@@ -149,6 +152,7 @@ EOF
 
 ## 규칙
 
+- **이슈는 항상 origin 저장소에 등록한다.** upstream(예: 강사 원본 저장소)에 등록하지 않는다. fork 환경에서는 `gh` 의 default repo 가 upstream 으로 잡히기 쉬우므로 매 호출 직전 `gh repo set-default` 또는 `--repo` 명시로 origin 을 강제한다.
 - **한국어로 대화한다.** 이 저장소는 수강생용이다.
 - **각 단계는 한 번에 하나씩 승인 받는다** — 계획 작성 후 한 번, 이슈 등록 전 한 번. 자동으로 묶어 진행하지 않는다.
 - **이슈 본문은 plan 파일을 가리키되, plan 본문을 통째로 복붙하지 않는다.** 변경이 생기면 plan 파일 한 곳만 갱신해도 추적되도록.
