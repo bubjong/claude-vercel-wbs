@@ -1,25 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { HStack, Progress, Table, Text } from '@chakra-ui/react';
+import { Badge, HStack, Progress, Table, Text } from '@chakra-ui/react';
 import type { InferSelectModel } from 'drizzle-orm';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { tasks as tasksTable } from '@/lib/db/schema';
+import { isOverdue } from '@/lib/gantt/date-grid';
 import { StatusBadgePopover } from './status-badge-popover';
 import { TaskEditModal } from './task-edit-modal';
 import { TaskRowMenu } from './task-row-menu';
 
 type Task = InferSelectModel<typeof tasksTable>;
 
-function formatMD(s: string | null): string | null {
+// 년도 포함 표기. 작년/올해 작업을 구별하기 위해 항상 YYYY 표시.
+function formatYMD(s: string | null): string | null {
   if (!s) return null;
-  const [, mm, dd] = s.split('-');
-  return `${Number(mm)}/${Number(dd)}`;
+  const [yyyy, mm, dd] = s.split('-');
+  return `${yyyy}/${Number(mm)}/${Number(dd)}`;
 }
 
 function formatRange(start: string | null, due: string | null): string {
-  const s = formatMD(start);
-  const d = formatMD(due);
+  const s = formatYMD(start);
+  const d = formatYMD(due);
   if (!s && !d) return '—';
   return `${s ?? '—'} ~ ${d ?? '—'}`;
 }
@@ -36,10 +38,16 @@ type Props = {
 
 export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props) {
   const [editOpen, setEditOpen] = useState(false);
+  const overdue = isOverdue(task.dueDate, task.status);
 
   return (
     <>
-      <Table.Row onClick={() => setEditOpen(true)} cursor="pointer" _hover={{ bg: 'bg.muted' }}>
+      <Table.Row
+        onClick={() => setEditOpen(true)}
+        cursor="pointer"
+        _hover={{ bg: 'bg.muted' }}
+        data-overdue={overdue ? 'true' : 'false'}
+      >
         <Table.Cell>
           <HStack gap="2" pl={`${depth * INDENT_PX}px`}>
             {hasChildren ? (
@@ -87,7 +95,18 @@ export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props)
             </Progress.Root>
           </HStack>
         </Table.Cell>
-        <Table.Cell>{formatRange(task.startDate, task.dueDate)}</Table.Cell>
+        <Table.Cell>
+          <HStack gap="2">
+            <Text color={overdue ? 'red.600' : undefined} fontSize="sm">
+              {formatRange(task.startDate, task.dueDate)}
+            </Text>
+            {overdue && (
+              <Badge colorPalette="red" size="sm" data-testid="overdue-badge">
+                지남
+              </Badge>
+            )}
+          </HStack>
+        </Table.Cell>
         <Table.Cell textAlign="end" onClick={(e) => e.stopPropagation()}>
           <TaskRowMenu task={task} />
         </Table.Cell>

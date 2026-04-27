@@ -110,6 +110,7 @@ export function todayLinePct(
 }
 
 // Overdue 판정: 오늘 > dueDate AND status !== 'done'.
+// SPEC §8 H-1 단일 출처. 목록 뷰(task-row.tsx)와 간트 뷰(task-list-gantt.tsx) 양쪽에서 사용.
 export function isOverdue(
   dueDate: string | null,
   status: string,
