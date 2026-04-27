@@ -11,9 +11,10 @@ import type { TaskView } from './task-view-container';
 type Props = {
   view: TaskView;
   onViewChange: (view: TaskView) => void;
+  taskCount: number;
 };
 
-export function TaskListToolbar({ view, onViewChange }: Props) {
+export function TaskListToolbar({ view, onViewChange, taskCount }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, startExport] = useTransition();
   const [importText, setImportText] = useState<string | null>(null);
@@ -92,7 +93,12 @@ export function TaskListToolbar({ view, onViewChange }: Props) {
           <Button colorPalette="blue" onClick={() => setCreateOpen(true)}>
             + 작업 추가
           </Button>
-          <Button variant="outline" onClick={handleExport} loading={exporting}>
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            loading={exporting}
+            disabled={taskCount === 0}
+          >
             CSV 내보내기
           </Button>
           <Button variant="outline" onClick={handleImportClick}>
