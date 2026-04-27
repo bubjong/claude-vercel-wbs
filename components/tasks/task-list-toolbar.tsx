@@ -6,8 +6,14 @@ import { toaster } from '@/components/ui/toaster';
 import { exportTasksCsv } from '@/lib/actions/csv';
 import { TaskCreateModal } from './task-create-modal';
 import { CsvImportDialog } from './csv-import-dialog';
+import type { TaskView } from './task-view-container';
 
-export function TaskListToolbar() {
+type Props = {
+  view: TaskView;
+  onViewChange: (view: TaskView) => void;
+};
+
+export function TaskListToolbar({ view, onViewChange }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [exporting, startExport] = useTransition();
   const [importText, setImportText] = useState<string | null>(null);
@@ -59,16 +65,40 @@ export function TaskListToolbar() {
 
   return (
     <>
-      <HStack gap="2" justify="flex-end">
-        <Button colorPalette="blue" onClick={() => setCreateOpen(true)}>
-          + 작업 추가
-        </Button>
-        <Button variant="outline" onClick={handleExport} loading={exporting}>
-          CSV 내보내기
-        </Button>
-        <Button variant="outline" onClick={handleImportClick}>
-          CSV 불러오기
-        </Button>
+      <HStack gap="2" justify="space-between">
+        <HStack gap="0" data-testid="task-view-toggle">
+          <Button
+            size="sm"
+            variant={view === 'list' ? 'solid' : 'outline'}
+            colorPalette={view === 'list' ? 'blue' : 'gray'}
+            borderRightRadius="0"
+            onClick={() => onViewChange('list')}
+            aria-pressed={view === 'list'}
+          >
+            목록
+          </Button>
+          <Button
+            size="sm"
+            variant={view === 'gantt' ? 'solid' : 'outline'}
+            colorPalette={view === 'gantt' ? 'blue' : 'gray'}
+            borderLeftRadius="0"
+            onClick={() => onViewChange('gantt')}
+            aria-pressed={view === 'gantt'}
+          >
+            간트
+          </Button>
+        </HStack>
+        <HStack gap="2">
+          <Button colorPalette="blue" onClick={() => setCreateOpen(true)}>
+            + 작업 추가
+          </Button>
+          <Button variant="outline" onClick={handleExport} loading={exporting}>
+            CSV 내보내기
+          </Button>
+          <Button variant="outline" onClick={handleImportClick}>
+            CSV 불러오기
+          </Button>
+        </HStack>
       </HStack>
 
       <input
