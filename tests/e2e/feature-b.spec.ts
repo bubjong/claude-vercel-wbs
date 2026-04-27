@@ -33,7 +33,7 @@ test.describe('기능 B — 작업 생성 (Task Create)', () => {
     await expect(row).toBeVisible();
     await expect(row.getByText('김PM')).toBeVisible();
     await expect(row.getByText('할 일')).toBeVisible();
-    await expect(row.getByText('5/1 ~ 5/3')).toBeVisible();
+    await expect(row.getByText('2026/5/1 ~ 2026/5/3')).toBeVisible();
   });
 
   test('필수: 제목이 비어있으면 저장 버튼 비활성', async ({ page }) => {

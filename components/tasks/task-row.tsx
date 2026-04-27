@@ -12,15 +12,16 @@ import { TaskRowMenu } from './task-row-menu';
 
 type Task = InferSelectModel<typeof tasksTable>;
 
-function formatMD(s: string | null): string | null {
+// 년도 포함 표기. 작년/올해 작업을 구별하기 위해 항상 YYYY 표시.
+function formatYMD(s: string | null): string | null {
   if (!s) return null;
-  const [, mm, dd] = s.split('-');
-  return `${Number(mm)}/${Number(dd)}`;
+  const [yyyy, mm, dd] = s.split('-');
+  return `${yyyy}/${Number(mm)}/${Number(dd)}`;
 }
 
 function formatRange(start: string | null, due: string | null): string {
-  const s = formatMD(start);
-  const d = formatMD(due);
+  const s = formatYMD(start);
+  const d = formatYMD(due);
   if (!s && !d) return '—';
   return `${s ?? '—'} ~ ${d ?? '—'}`;
 }
