@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Box, HStack, Portal, Text, VStack } from '@chakra-ui/react';
 import type { TaskNode } from '@/lib/tasks/tree';
 import {
@@ -27,6 +27,16 @@ export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
   );
   const gridWidth = weekCols.length * COL_WIDTH;
   const todayPct = todayLinePct(gridStart, totalDays, today);
+
+  // 처음 렌더 시 오늘 세로선이 가로 중앙에 오도록 스크롤.
+  // (그리드 폭이 viewport 보다 클 때 사용자에게 "오늘 주변"을 먼저 보여주기 위함)
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || todayPct === null) return;
+    const todayPx = (todayPct / 100) * gridWidth;
+    el.scrollLeft = Math.max(0, todayPx - el.clientWidth / 2);
+  }, [todayPct, gridWidth]);
 
   // 월 경계: 같은 월이 연속된 컬럼을 묶어 상단 헤더에 한 번만 그린다.
   const monthSpans: { label: string; widthPx: number }[] = [];
@@ -90,7 +100,7 @@ export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
         </VStack>
 
         {/* 우측: 날짜 그리드 (가로 스크롤) */}
-        <Box flex="1" overflowX="auto">
+        <Box flex="1" overflowX="auto" ref={scrollRef}>
           {/*
             그리드 본체는 정확히 weekCols × COL_WIDTH 픽셀.
             막대의 left%/width%는 이 박스를 기준으로 계산되므로,
@@ -202,16 +212,28 @@ export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
                       dueDate={t.dueDate as string}
                     />
                   ) : (
+                    // 가로 스크롤이 일어나도 라벨이 좌측 끝에 보이도록 sticky 사용.
+                    // 단 sticky 의 top: 50% 는 스크롤 컨테이너 기준이라 row 안에서 동작하지 않으므로,
+                    // 수직 중앙 정렬은 외부 absolute 박스가 담당하고 sticky 는 가로 위치만 처리한다.
                     <Box
                       position="absolute"
-                      top="50%"
-                      left="12px"
-                      transform="translateY(-50%)"
-                      fontSize="xs"
-                      color="gray.400"
-                      data-testid="gantt-no-schedule"
+                      top="0"
+                      left="0"
+                      width="100%"
+                      height="100%"
+                      display="flex"
+                      alignItems="center"
+                      pointerEvents="none"
                     >
-                      — 일정 없음 —
+                      <Box
+                        position="sticky"
+                        left="12px"
+                        fontSize="xs"
+                        color="gray.400"
+                        data-testid="gantt-no-schedule"
+                      >
+                        — 일정 없음 —
+                      </Box>
                     </Box>
                   )}
                 </Box>

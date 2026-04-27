@@ -120,6 +120,8 @@ test.describe('기능 G — 간트 일정 시각화', () => {
     await page.getByRole('button', { name: '간트' }).click();
 
     const bar = page.getByTestId('gantt-bar').first();
+    // 5개월 그리드는 viewport보다 넓을 수 있어, 마우스 이벤트 전에 막대를 viewport 안으로 스크롤.
+    await bar.scrollIntoViewIfNeeded();
     const box = await bar.boundingBox();
     if (!box) throw new Error('gantt-bar bounding box not found');
 

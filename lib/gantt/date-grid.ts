@@ -31,31 +31,33 @@ function diffDays(a: Date, b: Date): number {
   return Math.round((atUtcMidnight(a).getTime() - atUtcMidnight(b).getTime()) / DAY_MS);
 }
 
-// 그리드 범위: tasks의 startDate/dueDate 최솟값~최댓값 + 앞뒤 2주 여백.
-// 모든 작업에 날짜가 없으면 오늘 기준 ±8주 fallback.
+// 그리드 범위.
+// 최소 표시 윈도우: 오늘 달을 중앙에 두고 ±2달 (총 5개월).
+// 작업의 startDate/dueDate 가 이 윈도우를 벗어나면 그쪽 방향으로 확장한다.
 export function computeGridRange(
   rows: { startDate: string | null; dueDate: string | null }[],
   today: Date = new Date()
 ): { start: Date; end: Date; totalDays: number } {
-  const dates: Date[] = [];
+  const t = atUtcMidnight(today);
+  const windowStart = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - 2, 1));
+  const windowEnd = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 3, 0));
+
+  let min = windowStart;
+  let max = windowEnd;
   for (const r of rows) {
-    if (r.startDate) dates.push(atUtcMidnight(r.startDate));
-    if (r.dueDate) dates.push(atUtcMidnight(r.dueDate));
+    if (r.startDate) {
+      const d = atUtcMidnight(r.startDate);
+      if (d.getTime() < min.getTime()) min = d;
+    }
+    if (r.dueDate) {
+      const d = atUtcMidnight(r.dueDate);
+      if (d.getTime() > max.getTime()) max = d;
+    }
   }
 
-  let min: Date;
-  let max: Date;
-  if (dates.length === 0) {
-    const t = atUtcMidnight(today);
-    min = new Date(t.getTime() - 8 * 7 * DAY_MS);
-    max = new Date(t.getTime() + 8 * 7 * DAY_MS);
-  } else {
-    min = new Date(Math.min(...dates.map((d) => d.getTime())));
-    max = new Date(Math.max(...dates.map((d) => d.getTime())));
-  }
-
-  const start = new Date(startOfWeekMonday(min).getTime() - 2 * 7 * DAY_MS);
-  const end = new Date(startOfWeekMonday(max).getTime() + (2 + 1) * 7 * DAY_MS);
+  const start = startOfWeekMonday(min);
+  // max가 속한 주의 끝까지 포함하기 위해 +1주.
+  const end = new Date(startOfWeekMonday(max).getTime() + 7 * DAY_MS);
   const totalDays = diffDays(end, start);
   return { start, end, totalDays };
 }
