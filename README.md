@@ -41,7 +41,7 @@ Claude Code만으로 WBS(Work Breakdown Structure) 프로젝트 매니지먼트 
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| **풀스택 프레임워크** | Next.js 14+ (App Router, TypeScript) | 프론트엔드와 백엔드가 **하나의 Next.js 앱**으로 통합됨. 별도의 Node/Express 서버 없음 |
+| **풀스택 프레임워크** | Next.js 16+ (App Router, TypeScript) | 프론트엔드와 백엔드가 **하나의 Next.js 앱**으로 통합됨. 별도의 Node/Express 서버 없음 |
 | DB · Auth · Storage | Supabase | 로컬: Docker / 원격: Cloud |
 | ORM · **마이그레이션** | **Drizzle ORM** | 스키마·마이그레이션의 단일 원천 |
 | CI/CD | **GitHub Actions** | `main` push 시 프로덕션 DB 마이그레이션 자동 적용 |
