@@ -93,6 +93,7 @@ export function TaskListGantt({ nodes }: { nodes: TaskNode[] }) {
               textOverflow="ellipsis"
               whiteSpace="nowrap"
               title={node.task.title}
+              textDecoration={node.task.status === 'done' ? 'line-through' : undefined}
             >
               {node.task.title}
             </Box>

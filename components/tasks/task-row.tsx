@@ -75,7 +75,13 @@ export function TaskRow({ task, depth, hasChildren, expanded, onToggle }: Props)
               // 자식이 없으면 같은 폭의 spacer로 정렬 유지
               <span style={{ width: '1rem', display: 'inline-block' }} />
             )}
-            <span>{task.title}</span>
+            <span
+              style={{
+                textDecoration: task.status === 'done' ? 'line-through' : undefined,
+              }}
+            >
+              {task.title}
+            </span>
           </HStack>
         </Table.Cell>
         <Table.Cell>{task.assignee ?? '—'}</Table.Cell>
