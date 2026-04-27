@@ -14,7 +14,7 @@ export function TaskViewContainer({ nodes }: { nodes: TaskNode[] }) {
 
   return (
     <>
-      <TaskListToolbar view={view} onViewChange={setView} />
+      <TaskListToolbar view={view} onViewChange={setView} taskCount={nodes.length} />
       {nodes.length === 0 ? (
         <TaskListEmpty />
       ) : view === 'list' ? (

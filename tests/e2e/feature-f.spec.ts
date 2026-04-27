@@ -73,25 +73,10 @@ test.describe('기능 F — CSV 가져오기/내보내기', () => {
     expect(parentLine).toContain('"진행 중"');
   });
 
-  test('J10-empty: 작업이 없을 때도 CSV 내보내기가 헤더만 포함한 파일을 만든다', async ({
-    page,
-  }) => {
+  test('J10-empty: 작업이 없을 때 CSV 내보내기 버튼이 비활성화된다', async ({ page }) => {
     await page.goto('/');
 
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'CSV 내보내기' }).click();
-    const download = await downloadPromise;
-
-    const downloadPath = await download.path();
-    const fs = await import('node:fs/promises');
-    const raw = await fs.readFile(downloadPath, 'utf-8');
-    const text = raw.slice(UTF8_BOM.length);
-    const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toBe(
-      '"제목","설명","담당자","상태","진행률","시작일","목표 기한","상위 작업 제목"'
-    );
+    await expect(page.getByRole('button', { name: 'CSV 내보내기' })).toBeDisabled();
   });
 
   test('J11: CSV 가져오기 정상 — 3건 추가, 계층 연결', async ({ page }) => {
