@@ -249,6 +249,7 @@ export function TaskListGantt({ nodes, collapsed, onToggle }: Props) {
                       widthPct={style.widthPct}
                       progress={t.progress}
                       overdue={overdue}
+                      status={t.status}
                       startDate={t.startDate as string}
                       dueDate={t.dueDate as string}
                     />
@@ -298,12 +299,19 @@ type BarProps = {
   widthPct: number;
   progress: number;
   overdue: boolean;
+  status: string;
   startDate: string;
   dueDate: string;
 };
 
-function GanttBar({ leftPct, widthPct, progress, overdue, startDate, dueDate }: BarProps) {
+function GanttBar({ leftPct, widthPct, progress, overdue, status, startDate, dueDate }: BarProps) {
   const clamped = Math.max(0, Math.min(100, progress));
+  // SPEC §7 G-2 — 완료 작업은 초록 계열, 미완료는 파랑 계열.
+  // status-badge.tsx 의 `done → 'green'` 컨벤션과 일치시킨다.
+  const done = status === 'done';
+  const bgColor = done ? 'green.100' : 'blue.100';
+  const fillColor = done ? 'green.500' : 'blue.500';
+  const restingBorder = done ? 'green.300' : 'blue.300';
   // SPEC §7 G-2 — 막대 hover 툴팁: 시작일 ~ 목표 기한.
   // 긴 막대에서 트리거 박스 중앙에 툴팁이 떠 부자연스러워 보이지 않도록,
   // 마우스 좌표를 직접 추적해 cursor 옆에 띄운다.
@@ -321,12 +329,13 @@ function GanttBar({ leftPct, widthPct, progress, overdue, startDate, dueDate }: 
         height="20px"
         borderRadius="sm"
         overflow="hidden"
-        bg="blue.100"
+        bg={bgColor}
         borderWidth={overdue ? '2px' : '1px'}
-        borderColor={overdue ? 'red.500' : 'blue.300'}
+        borderColor={overdue ? 'red.500' : restingBorder}
         cursor="default"
         data-testid="gantt-bar"
         data-overdue={overdue ? 'true' : 'false'}
+        data-status={status}
         onMouseEnter={(e) => setMouse({ x: e.clientX, y: e.clientY })}
         onMouseMove={(e) => setMouse({ x: e.clientX, y: e.clientY })}
         onMouseLeave={() => setMouse(null)}
@@ -334,7 +343,7 @@ function GanttBar({ leftPct, widthPct, progress, overdue, startDate, dueDate }: 
         <Box
           height="100%"
           width={`${clamped}%`}
-          bg="blue.500"
+          bg={fillColor}
           pointerEvents="none"
           data-testid="gantt-bar-fill"
         />

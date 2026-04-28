@@ -235,6 +235,59 @@ test.describe('기능 G — 간트 일정 시각화', () => {
     await expect(page.getByRole('cell', { name: /아젠다 초안/ }).first()).toBeVisible();
   });
 
+  test('J20: 완료 작업의 막대는 초록 계열, 미완료는 파랑 계열로 표시된다', async ({ page }) => {
+    // 같은 기간으로 두 작업 시드 — 색만 다르게 검증.
+    await seedTask({
+      title: '작업 A',
+      startDate: '2026-06-01',
+      dueDate: '2026-06-10',
+      progress: 60,
+      status: 'todo',
+    });
+    await seedTask({
+      title: '작업 B',
+      startDate: '2026-06-01',
+      dueDate: '2026-06-10',
+      status: 'done',
+    });
+
+    await page.goto('/');
+    await page.getByRole('button', { name: '간트' }).click();
+
+    const todoBar = page.locator('[data-testid="gantt-bar"][data-status="todo"]');
+    const doneBar = page.locator('[data-testid="gantt-bar"][data-status="done"]');
+    await expect(todoBar).toHaveCount(1);
+    await expect(doneBar).toHaveCount(1);
+
+    // 미완료 — blue.100 배경 + blue.500 fill (Chakra v3 default: #dbeafe / #3b82f6)
+    const todoStyles = await todoBar.evaluate((el) => {
+      const fill = el.querySelector('[data-testid="gantt-bar-fill"]') as HTMLElement;
+      return {
+        bg: getComputedStyle(el).backgroundColor,
+        border: getComputedStyle(el).borderColor,
+        fillBg: getComputedStyle(fill).backgroundColor,
+      };
+    });
+    expect(todoStyles.bg).toMatch(/rgb\(\s*219\s*,\s*234\s*,\s*254\s*\)/);
+    expect(todoStyles.fillBg).toMatch(/rgb\(\s*59\s*,\s*130\s*,\s*246\s*\)/);
+
+    // 완료 — green.100 배경 + green.500 fill (#dcfce7 / #22c55e)
+    const doneStyles = await doneBar.evaluate((el) => {
+      const fill = el.querySelector('[data-testid="gantt-bar-fill"]') as HTMLElement;
+      return {
+        bg: getComputedStyle(el).backgroundColor,
+        border: getComputedStyle(el).borderColor,
+        fillBg: getComputedStyle(fill).backgroundColor,
+      };
+    });
+    expect(doneStyles.bg).toMatch(/rgb\(\s*220\s*,\s*252\s*,\s*231\s*\)/);
+    expect(doneStyles.fillBg).toMatch(/rgb\(\s*34\s*,\s*197\s*,\s*94\s*\)/);
+
+    // 두 막대의 배경이 서로 달라야 한다 — 사용자가 색으로 구분 가능
+    expect(todoStyles.bg).not.toBe(doneStyles.bg);
+    expect(todoStyles.fillBg).not.toBe(doneStyles.fillBg);
+  });
+
   test('자식 없는 부모 행은 간트 좌측 라벨에 토글 버튼이 없다', async ({ page }) => {
     await seedTask({
       title: '리서치',
