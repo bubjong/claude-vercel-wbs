@@ -131,8 +131,8 @@
         "Tests pass"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "프로젝트 testDir이 ./tests/e2e 이므로 파일 위치는 tests/e2e/mcp.spec.ts. playwright.config.ts webServer.env에 MCP_PUBLIC_ENABLED='1' 추가. before/afterEach truncateTasks로 격리. npm run test:e2e -- mcp.spec.ts 4 passed."
     },
     {
       "id": "US-008",

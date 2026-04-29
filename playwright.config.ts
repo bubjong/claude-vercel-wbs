@@ -17,5 +17,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // /api/mcp 라우트가 응답해야 mcp.spec.ts 가 통과한다.
+    env: {
+      MCP_PUBLIC_ENABLED: '1',
+    },
   },
 });
