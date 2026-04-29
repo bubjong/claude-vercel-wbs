@@ -167,8 +167,8 @@
         "Lint passes"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "## MCP로 호출하기 섹션을 '원격 배포하기' 다음(트러블슈팅 직전)에 추가. 활성화/Inspector/Claude Code 등록/도구 스펙 테이블 4 하위절. update_task 행에 '진행률 100 → status done 자동 동기화' 명시. prettier/tsc/lint 모두 통과."
     }
   ]
 }
