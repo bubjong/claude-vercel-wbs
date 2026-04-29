@@ -37,8 +37,8 @@
         "Lint passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "lib/mcp/server.ts (factory) + lib/mcp/tools/tasks.ts (zod 입력 스키마와 not-implemented 스텁 핸들러) 추가. tsc/lint 통과."
     },
     {
       "id": "US-003",
