@@ -396,6 +396,69 @@ gh run watch        # 실행 중인 워크플로우를 실시간 관찰
 
 ---
 
+## MCP로 호출하기
+
+이 프로젝트는 같은 Vercel 배포에서 MCP(Streamable HTTP) 엔드포인트 `/api/mcp`를 노출한다. UI에서 쓰는 동일한 검증·자동 동기화 로직을 거쳐 Task CRUD를 호출할 수 있어, Claude Code·Cursor·MCP Inspector 같은 에이전트가 그대로 연결된다.
+
+### 1) 활성화
+
+엔드포인트는 환경변수 `MCP_PUBLIC_ENABLED=1`이 설정됐을 때만 응답한다. 그 외에는 모두 `404 { "error": "MCP endpoint disabled" }`.
+
+- **로컬**: `.env.local`에 `MCP_PUBLIC_ENABLED=1` 추가 (`.env.local.example` 참고). `npm run dev` 재기동.
+- **운영(Vercel)**: 프로젝트 → Settings → Environment Variables → **Production** 스코프에 `MCP_PUBLIC_ENABLED=1` 추가 후 재배포.
+
+### 2) Inspector로 호출
+
+가장 빠른 확인 방법은 [MCP Inspector](https://github.com/modelcontextprotocol/inspector). 로컬 서버를 띄운 채 다음을 실행:
+
+```bash
+npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp
+```
+
+브라우저가 열리고 5개 도구(`list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`)를 직접 호출해 볼 수 있다.
+
+### 3) Claude Code에 등록
+
+이 저장소의 `.mcp.json`에는 이미 로컬 개발용 항목이 들어 있다.
+
+```json
+{
+  "mcpServers": {
+    "wbs-local": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
+    }
+  }
+}
+```
+
+본인이 배포한 Vercel URL을 같은 머신의 Claude Code에 추가하려면, 사용자 단위 `~/.claude.json` 또는 별도 항목으로 다음과 같이 등록한다(URL은 본인 것으로 교체):
+
+```json
+{
+  "mcpServers": {
+    "wbs-vercel": {
+      "type": "http",
+      "url": "https://<본인-vercel-도메인>/api/mcp"
+    }
+  }
+}
+```
+
+등록 후 Claude Code를 재시작하면 도구 목록에 `wbs-*` 항목들이 노출된다.
+
+### 4) 도구 스펙
+
+| tool 이름 | 입력 스키마 (요약) | 출력 (요약) | 비즈니스 규칙 비고 |
+|---|---|---|---|
+| `list_tasks` | (없음) | Task 행 배열 (createdAt 오름차순) | 읽기 전용 |
+| `get_task` | `id` (uuid) | 단일 Task 행 | 없으면 `Task not found` 에러 |
+| `create_task` | `title` 필수 + `description`, `assignee`, `status`, `progress`, `startDate`(YYYY-MM-DD), `dueDate`(YYYY-MM-DD), `parentId` 선택 | 생성된 Task 행 | 깊이 2단계 제한, 시작·기한 순서 검증 |
+| `update_task` | `id` 필수 + 위 필드들 부분 수정(들어온 키만 갱신, null 명시는 비우기) | 갱신된 Task 행 | 진행률 100 → status `done` 자동 동기화 (역방향은 없음) |
+| `delete_task` | `id` (uuid) | `{ ok: true, id }` | 자식 Task는 DB FK cascade로 함께 삭제 |
+
+---
+
 ## 트러블슈팅
 
 | 증상 | 원인 후보 | 해결 |

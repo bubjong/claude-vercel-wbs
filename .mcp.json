@@ -11,6 +11,10 @@
     "chakra-ui": {
       "command": "npx",
       "args": ["-y", "@chakra-ui/react-mcp"]
+    },
+    "wbs-local": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
     }
   }
 }

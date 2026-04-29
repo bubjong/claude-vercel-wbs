@@ -20,13 +20,15 @@
   "dependencies": {
     "@chakra-ui/react": "^3.35.0",
     "@emotion/react": "^11.14.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.11.0",
     "next": "^16.2.4",
     "papaparse": "^5.5.3",
     "postgres": "^3.4.9",
     "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react-dom": "^19.2.5",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
