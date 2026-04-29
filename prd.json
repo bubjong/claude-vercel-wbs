@@ -147,8 +147,8 @@
         "Lint passes"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "wbs-local 항목을 type='http', url='http://localhost:3000/api/mcp'로 추가. 기존 context7/playwright/chakra-ui 항목은 그대로. JSON 파싱 OK."
     },
     {
       "id": "US-009",
