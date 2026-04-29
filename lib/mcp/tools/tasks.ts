@@ -1,5 +1,8 @@
 import { z } from 'zod';
+import { asc, eq } from 'drizzle-orm';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { db } from '@/lib/db';
+import { tasks } from '@/lib/db/schema';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD 형식이어야 합니다.');
 
@@ -65,13 +68,28 @@ function notImplemented(name: string): CallToolResult {
   };
 }
 
-export async function listTasks(): Promise<CallToolResult> {
-  return notImplemented('list_tasks');
+function textResult(payload: unknown): CallToolResult {
+  return {
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+  };
 }
 
-export async function getTask(_input: GetTaskInput): Promise<CallToolResult> {
-  void _input;
-  return notImplemented('get_task');
+function errorResult(message: string): CallToolResult {
+  return {
+    isError: true,
+    content: [{ type: 'text', text: message }],
+  };
+}
+
+export async function listTasks(): Promise<CallToolResult> {
+  const rows = await db.select().from(tasks).orderBy(asc(tasks.createdAt));
+  return textResult(rows);
+}
+
+export async function getTask(input: GetTaskInput): Promise<CallToolResult> {
+  const [row] = await db.select().from(tasks).where(eq(tasks.id, input.id));
+  if (!row) return errorResult('Task not found');
+  return textResult(row);
 }
 
 export async function createTaskTool(_input: CreateTaskToolInput): Promise<CallToolResult> {

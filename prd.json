@@ -55,8 +55,8 @@
         "Lint passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "list_tasks는 db.select().from(tasks).orderBy(asc(createdAt)), get_task는 eq(id) 후 결과 없으면 isError:true와 'Task not found' 텍스트를 반환. 신규 쿼리 레이어 없음."
     },
     {
       "id": "US-004",
