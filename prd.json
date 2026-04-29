@@ -1,0 +1,174 @@
+{
+  "project": "claude-vercel-wbs",
+  "branchName": "ralph/mcp-server",
+  "description": "Issue #24 — Expose existing WBS Task CRUD via a Streamable HTTP MCP endpoint at app/api/mcp so AI agents (Claude Code, Cursor, MCP Inspector) can call list_tasks, get_task, create_task, update_task, delete_task against the same Vercel deployment. Reuses existing Drizzle queries and Server Actions; enforces progress=100 → status='done' auto-sync server-side; gated by MCP_PUBLIC_ENABLED env var.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add MCP SDK and zod dependencies, verify Server Actions are server-importable",
+      "description": "As a developer, I want @modelcontextprotocol/sdk and zod installed and the existing createTask/updateTask/deleteTask Server Actions confirmed importable from server-side modules so the MCP layer can reuse them.",
+      "acceptanceCriteria": [
+        "package.json dependencies include @modelcontextprotocol/sdk and zod",
+        "npm install completes successfully and package-lock.json is updated",
+        "createTask, updateTask, deleteTask in lib/actions/tasks.ts can be imported from a non-'use server' module without TypeScript errors",
+        "lib/db/validation.ts signatures (autoSyncStatusByProgress, isValidDateRange) remain unchanged",
+        "Typecheck passes (npx tsc --noEmit)",
+        "Lint passes (npm run lint)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create McpServer factory and zod input schemas for 5 tools",
+      "description": "As a developer, I want a createMcpServer() factory that builds a fresh McpServer per request and registers 5 tools with zod input schemas, so the Route Handler can wire it to the Streamable HTTP transport.",
+      "acceptanceCriteria": [
+        "lib/mcp/server.ts created and exports createMcpServer() returning an McpServer instance",
+        "Server metadata uses name='wbs-tasks-mcp' and version='1.0.0'",
+        "5 tools registered: list_tasks, get_task, create_task, update_task, delete_task",
+        "Tool handlers imported from lib/mcp/tools/tasks.ts (stubs returning empty/'not implemented' content are acceptable in this story)",
+        "list_tasks input schema is empty",
+        "get_task input schema: { id: z.string().uuid() }",
+        "create_task input schema: title required string, plus optional description, assignee, status (enum 'todo'|'doing'|'done'), progress (int 0..100), startDate (YYYY-MM-DD), dueDate (YYYY-MM-DD), parentId (uuid)",
+        "update_task input schema: id required uuid, plus optional title, description (string|null), assignee (string|null), status, progress, startDate (string|null), dueDate (string|null)",
+        "delete_task input schema: { id: z.string().uuid() }",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Implement read tools: list_tasks and get_task",
+      "description": "As an agent user, I want to list all tasks (flat array, ordered by createdAt asc) and fetch a single task by id, so I can read WBS state through MCP.",
+      "acceptanceCriteria": [
+        "lib/mcp/tools/tasks.ts exports listTasks and getTask handlers",
+        "list_tasks queries the tasks table via the existing Drizzle db client (lib/db/index.ts) ordered by createdAt asc",
+        "list_tasks response is an MCP content array with one text block containing JSON.stringify of the array",
+        "get_task returns the matching row when found",
+        "get_task returns an MCP error response with text 'Task not found' when the id does not exist",
+        "No new query layer is introduced (reuse db.select() directly)",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Implement write tools: create_task, update_task, delete_task (reuse Server Actions)",
+      "description": "As an agent user, I want to create, update, and delete tasks via MCP using the same validation and auto-sync rules as the UI, so the agent cannot bypass business logic.",
+      "acceptanceCriteria": [
+        "lib/mcp/tools/tasks.ts exports createTaskTool, updateTaskTool, deleteTaskTool handlers",
+        "Each handler invokes the corresponding function from lib/actions/tasks.ts (createTask, updateTask, deleteTask) directly",
+        "When the Server Action returns { ok: false, error }, the MCP handler returns an MCP error response whose text is the Korean error string",
+        "When the Server Action returns { ok: true, ... }, the MCP handler returns a content text block with JSON.stringify of the result (created/updated row or { ok: true, id })",
+        "Calling update_task with { progress: 100 } produces a stored row whose status is 'done' (verified by a subsequent get_task call returning status === 'done')",
+        "Calling update_task with only { status: 'done' } and no progress does NOT change progress (no reverse sync)",
+        "delete_task does not implement custom child-deletion logic; the DB FK on delete cascade handles children",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Wire app/api/mcp/route.ts to StreamableHTTPServerTransport",
+      "description": "As a developer, I want the Next.js Route Handler at app/api/mcp/route.ts to handle POST/GET/DELETE by delegating to a fresh StreamableHTTPServerTransport per request connected to the McpServer factory.",
+      "acceptanceCriteria": [
+        "app/api/mcp/route.ts created and exports POST, GET, DELETE handlers",
+        "Each request creates a new createMcpServer() instance and a new StreamableHTTPServerTransport (stateless mode)",
+        "The initialize handshake negotiates protocolVersion '2025-11-25'",
+        "Requests without an MCP-Protocol-Version header are accepted and the SDK falls back to '2025-03-26' (no extra code required)",
+        "Unsupported protocolVersion values produce HTTP 400 (default SDK behavior)",
+        "Route Handler declares export const runtime = 'nodejs'",
+        "Calling POST /api/mcp with a tools/list MCP request returns the 5 registered tools",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Gate /api/mcp behind MCP_PUBLIC_ENABLED env var",
+      "description": "As an operator, I want the MCP route to respond only when MCP_PUBLIC_ENABLED=1, so deploys do not accidentally expose the endpoint.",
+      "acceptanceCriteria": [
+        "POST/GET/DELETE handlers in app/api/mcp/route.ts return HTTP 404 when process.env.MCP_PUBLIC_ENABLED !== '1'",
+        "404 response body is either empty or the JSON { \"error\": \"MCP endpoint disabled\" }",
+        ".env.local.example exists and contains the line MCP_PUBLIC_ENABLED=1 (create the file if missing)",
+        "When MCP_PUBLIC_ENABLED=1, all 5 tools work as in US-005",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Playwright e2e: integration test for MCP route via fetch",
+      "description": "As a developer, I want a Playwright test that exercises /api/mcp with the request fixture (no browser) covering tools/list and the create→update(progress:100)→delete flow, so MCP behavior is regression-protected.",
+      "acceptanceCriteria": [
+        "tests/mcp.spec.ts created using Playwright test.describe('MCP /api/mcp', ...)",
+        "Tests use the Playwright `request` fixture only (no browser page is opened)",
+        "Test environment ensures MCP_PUBLIC_ENABLED=1 is set for the dev server (via Playwright config webServer env or equivalent)",
+        "Scenario 1: tools/list response contains all 5 tool names (list_tasks, get_task, create_task, update_task, delete_task)",
+        "Scenario 2: create_task with { title: 'mcp-test' } returns an id; subsequent get_task with that id returns the same row",
+        "Scenario 3: update_task with { progress: 100 } on the created task; subsequent get_task returns status === 'done'",
+        "Scenario 4: delete_task with the id; subsequent get_task returns the 'Task not found' MCP error",
+        "No leftover rows remain after the test run (each scenario cleans up its own data)",
+        "npm run test:e2e -- mcp.spec.ts passes locally",
+        "Typecheck passes",
+        "Lint passes",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Register local MCP server in .mcp.json",
+      "description": "As a learner, I want a wbs-local entry in .mcp.json pointing to http://localhost:3000/api/mcp so Claude Code can discover the local MCP server.",
+      "acceptanceCriteria": [
+        ".mcp.json mcpServers object contains a wbs-local entry",
+        "wbs-local entry is a Streamable HTTP server pointing to http://localhost:3000/api/mcp",
+        "Existing entries (context7, playwright, chakra-ui) are unchanged",
+        "node -e \"JSON.parse(require('fs').readFileSync('.mcp.json'))\" exits 0 (valid JSON)",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Add 'MCP로 호출하기' section to README with tool spec table",
+      "description": "As a learner, I want a README section that explains how to enable, call, and integrate the MCP server, plus a spec table for the 5 tools.",
+      "acceptanceCriteria": [
+        "README.md gains a new '## MCP로 호출하기' section placed after the deployment section",
+        "Subsection 1 '활성화' explains MCP_PUBLIC_ENABLED=1 (where to set: .env.local locally, Vercel Production env in production)",
+        "Subsection 2 'Inspector로 호출' shows the exact command npx @modelcontextprotocol/inspector http://localhost:3000/api/mcp",
+        "Subsection 3 'Claude Code에 등록' shows the .mcp.json wbs-local example and instructions for adding the user's own Vercel URL",
+        "Subsection 4 contains a markdown table with columns: 'tool 이름 | 입력 스키마 (요약) | 출력 (요약) | 비즈니스 규칙 비고'",
+        "Table includes one row per tool (5 rows total)",
+        "The update_task row explicitly states '진행률 100 → status done 자동 동기화'",
+        "Markdown renders without broken syntax (run npm run format:check or visual preview)",
+        "Typecheck passes",
+        "Lint passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
