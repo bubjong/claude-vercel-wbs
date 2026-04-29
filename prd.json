@@ -93,8 +93,8 @@
         "Lint passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Next.js Route Handler에는 SDK가 권장하는 WebStandardStreamableHTTPServerTransport(Web Request/Response 호환)를 사용. sessionIdGenerator: undefined로 stateless. enableJsonResponse:true. 수동 검증: initialize→2025-11-25 협상, tools/list→5개 도구, 미지원 버전 헤더→HTTP 400."
     },
     {
       "id": "US-006",
