@@ -3,7 +3,15 @@ import { createMcpServer } from '@/lib/mcp/server';
 
 export const runtime = 'nodejs';
 
+function disabledResponse(): Response {
+  return new Response(JSON.stringify({ error: 'MCP endpoint disabled' }), {
+    status: 404,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 async function handle(req: Request): Promise<Response> {
+  if (process.env.MCP_PUBLIC_ENABLED !== '1') return disabledResponse();
   const server = createMcpServer();
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

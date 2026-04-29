@@ -109,8 +109,8 @@
         "Lint passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "공통 handle()이 process.env.MCP_PUBLIC_ENABLED!=='1'이면 {\"error\":\"MCP endpoint disabled\"} 본문으로 404 반환. .env.local.example 신규 추가. 수동 검증: 미설정 시 404, MCP_PUBLIC_ENABLED=1 시 tools/list가 5개 도구 응답."
     },
     {
       "id": "US-007",
