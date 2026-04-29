@@ -74,8 +74,8 @@
         "Lint passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "createTaskTool/updateTaskTool은 Server Action 호출 후 row를 다시 조회해 JSON으로 반환. deleteTaskTool은 { ok: true, id }를 반환. 진행률 100 자동 동기화는 Server Action의 applyAutoSync가 그대로 적용. status만 들어오는 update는 progress가 변경되지 않음. cascade는 schema의 onDelete='cascade' 위임."
     },
     {
       "id": "US-005",

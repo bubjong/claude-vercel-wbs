@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { db } from '@/lib/db';
 import { tasks } from '@/lib/db/schema';
+import { createTask, updateTask, deleteTask } from '@/lib/actions/tasks';
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD 형식이어야 합니다.');
 
@@ -62,12 +63,6 @@ export type UpdateTaskToolInput = {
 };
 export type DeleteTaskInput = { id: string };
 
-function notImplemented(name: string): CallToolResult {
-  return {
-    content: [{ type: 'text', text: `not implemented: ${name}` }],
-  };
-}
-
 function textResult(payload: unknown): CallToolResult {
   return {
     content: [{ type: 'text', text: JSON.stringify(payload) }],
@@ -92,17 +87,23 @@ export async function getTask(input: GetTaskInput): Promise<CallToolResult> {
   return textResult(row);
 }
 
-export async function createTaskTool(_input: CreateTaskToolInput): Promise<CallToolResult> {
-  void _input;
-  return notImplemented('create_task');
+export async function createTaskTool(input: CreateTaskToolInput): Promise<CallToolResult> {
+  const result = await createTask(input);
+  if (!result.ok) return errorResult(result.error);
+  const [row] = await db.select().from(tasks).where(eq(tasks.id, result.taskId));
+  return textResult(row);
 }
 
-export async function updateTaskTool(_input: UpdateTaskToolInput): Promise<CallToolResult> {
-  void _input;
-  return notImplemented('update_task');
+export async function updateTaskTool(input: UpdateTaskToolInput): Promise<CallToolResult> {
+  const { id, ...patch } = input;
+  const result = await updateTask(id, patch);
+  if (!result.ok) return errorResult(result.error);
+  const [row] = await db.select().from(tasks).where(eq(tasks.id, id));
+  return textResult(row);
 }
 
-export async function deleteTaskTool(_input: DeleteTaskInput): Promise<CallToolResult> {
-  void _input;
-  return notImplemented('delete_task');
+export async function deleteTaskTool(input: DeleteTaskInput): Promise<CallToolResult> {
+  const result = await deleteTask(input.id);
+  if (!result.ok) return errorResult(result.error);
+  return textResult({ ok: true, id: input.id });
 }
