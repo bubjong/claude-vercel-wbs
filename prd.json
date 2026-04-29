@@ -16,8 +16,8 @@
         "Lint passes (npm run lint)"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed @modelcontextprotocol/sdk@^1.29.0 and zod@^4.3.6. Verified imports via temporary probe module (now removed); tsc + lint clean."
     },
     {
       "id": "US-002",
